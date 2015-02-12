@@ -1,10 +1,10 @@
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h>
 #include <vector>
 #include <string.h>
-
+*/
 typedef struct vector3 {
-	float x, y, z;
+	GLfloat x, y, z;
 } vec3;
 
 typedef struct vector3Int {
@@ -15,10 +15,16 @@ typedef struct face {
 	vec3Int vi, ni;
 } face;
 
-int main (int argc, char **argv) {
-	std::vector<vec3> vertices;
-	std::vector<vec3> normals;
-	std::vector<face> faces;
+std::vector<vec3> vertices;
+std::vector<vec3> final_vertices;
+std::vector<vec3> normals;
+std::vector<vec3> final_normals;
+std::vector<vec3> vbo;
+std::vector<face> faces;
+
+GLfloat * out_data;
+
+int read_obj () {
 
 	FILE * fp = fopen("bunny.obj", "r");
 	if(fp == NULL) {
@@ -28,6 +34,7 @@ int main (int argc, char **argv) {
 	
 	char *dataType = (char *)malloc(sizeof(char) * 2);
 	
+
 	while(1) {
 		int line = fscanf(fp, "%s", dataType);
 		
@@ -64,6 +71,37 @@ int main (int argc, char **argv) {
 			printf("Unrecognized data type: %s\n", dataType);
 			break;
 		}
+	}
+	int i, j;
+	for(i = 0; i < faces.size(); i++) {
+		final_vertices.push_back(vertices[faces[i].vi.x]);
+		final_vertices.push_back(vertices[faces[i].vi.y]);
+		final_vertices.push_back(vertices[faces[i].vi.z]);
+		
+		final_normals.push_back(normals[faces[i].ni.x]);
+		final_normals.push_back(normals[faces[i].ni.y]);
+		final_normals.push_back(normals[faces[i].ni.z]);
+	}
+
+	out_data = (GLfloat *)malloc(sizeof(GLfloat) * faces.size() * 2 * 3);
+	j = 0;	
+	for(i = 0; i < faces.size(); i++) {
+		//vbo.push_back(final_vertices[i]);	
+		out_data[j] = final_vertices[i].x;	
+		j++;
+		out_data[j] = final_vertices[i].y;	
+		j++;
+		out_data[j] = final_vertices[i].z;	
+		j++;
+	}
+	for(i = faces.size(); i < faces.size()*2; i++) {
+		//vbo.push_back(final_normals[i]);	
+		out_data[j] = final_normals[i].x;	
+		j++;
+		out_data[j] = final_normals[i].y;	
+		j++;
+		out_data[j] = final_normals[i].z;	
+		j++;
 	}
 
 	return 0;
