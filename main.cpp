@@ -34,8 +34,8 @@ void setup_the_viewvol()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	eye.x = 0.0; eye.y = 3.0; eye.z = 6.0;
-	view.x = 0.0; view.y = 0.0; view.z = 0.0;
+	eye.x = -3.0; eye.y = 3.0; eye.z = 6.0;
+	view.x = -0.5; view.y = 1.0; view.z = 0.0;
 	up.x = 0.0; up.y = 1.0; up.z = 0.0;
 
 	gluLookAt(eye.x,eye.y,eye.z,view.x,view.y,view.z,up.x,up.y,up.z);
