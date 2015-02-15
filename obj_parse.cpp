@@ -24,9 +24,12 @@ std::vector<face> faces;
 
 GLfloat * out_data;
 
+int out_data_size = 0;
+
 int read_obj () {
 
 	FILE * fp = fopen("bunny.obj", "r");
+	
 	if(fp == NULL) {
 		printf("Error reading file\n");
 		return 0;
@@ -37,7 +40,6 @@ int read_obj () {
 
 	while(1) {
 		int line = fscanf(fp, "%s", dataType);
-		
 		if(line == EOF) {
 			printf("End of File!\n");
 			break;
@@ -51,18 +53,15 @@ int read_obj () {
 		}
 		if(strcmp("v", dataType) == 0) {
 			fscanf(fp, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-			//printf("v %f %f %f\n", vertex.x, vertex.y, vertex.z);
 			vertices.push_back(vertex);
 		}
 		else if(strcmp("vn", dataType) == 0) {
 			fscanf(fp, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-			//printf("vn %f %f %f\n", vertex.x, vertex.y, vertex.z);
 			normals.push_back(vertex);
 		}
 		else if(strcmp("f", dataType) == 0) {
 			vec3Int vi, ti, ni;
 			fscanf(fp, "%d//%d %d//%d %d//%d\n", &vi.x, &ni.x, &vi.y, &ni.y, &vi.z, &ni.z);
-			//printf("f %d//%d %d//%d %d//%d\n", vi.x, ni.x, vi.y, ni.y, vi.z, ni.z);
 			tmpFace.vi = vi;
 			tmpFace.ni = ni;
 			faces.push_back(tmpFace);
@@ -74,19 +73,20 @@ int read_obj () {
 	}
 	int i, j;
 	for(i = 0; i < faces.size(); i++) {
-		final_vertices.push_back(vertices[faces[i].vi.x]);
-		final_vertices.push_back(vertices[faces[i].vi.y]);
-		final_vertices.push_back(vertices[faces[i].vi.z]);
+		final_vertices.push_back(vertices[faces[i].vi.x-1]);
+		final_vertices.push_back(vertices[faces[i].vi.y-1]);
+		final_vertices.push_back(vertices[faces[i].vi.z-1]);
 		
-		final_normals.push_back(normals[faces[i].ni.x]);
-		final_normals.push_back(normals[faces[i].ni.y]);
-		final_normals.push_back(normals[faces[i].ni.z]);
+		final_normals.push_back(normals[faces[i].ni.x-1]);
+		final_normals.push_back(normals[faces[i].ni.y-1]);
+		final_normals.push_back(normals[faces[i].ni.z-1]);
 	}
+	
+	out_data_size = faces.size() * 2 * 3 * 3;
 
-	out_data = (GLfloat *)malloc(sizeof(GLfloat) * faces.size() * 2 * 3);
-	j = 0;	
-	for(i = 0; i < faces.size(); i++) {
-		//vbo.push_back(final_vertices[i]);	
+	out_data = (GLfloat *)malloc(sizeof(GLfloat) * out_data_size);
+	j = 0;
+	for(i = 0; i < faces.size()*3; i++) {
 		out_data[j] = final_vertices[i].x;	
 		j++;
 		out_data[j] = final_vertices[i].y;	
@@ -94,8 +94,7 @@ int read_obj () {
 		out_data[j] = final_vertices[i].z;	
 		j++;
 	}
-	for(i = faces.size(); i < faces.size()*2; i++) {
-		//vbo.push_back(final_normals[i]);	
+	for(i = 0; i < faces.size()*3; i++) {
 		out_data[j] = final_normals[i].x;	
 		j++;
 		out_data[j] = final_normals[i].y;	
@@ -103,6 +102,6 @@ int read_obj () {
 		out_data[j] = final_normals[i].z;	
 		j++;
 	}
-
+	
 	return 0;
 }
