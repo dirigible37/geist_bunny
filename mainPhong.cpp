@@ -15,7 +15,7 @@
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
-#define VPASSES 10
+#define VPASSES 50
 #define JITTER 0.01
 
 double genrand()
