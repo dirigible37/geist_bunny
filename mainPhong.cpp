@@ -17,6 +17,12 @@
 
 #define VPASSES 50
 #define JITTER 0.01
+#define ADDEACH 0.02
+#define FADE 0.98
+
+float eye[] = {-3.0,3.0,6.0};
+float viewpt[] = {-0.5,1.0,0.0};
+float up[] = {0.0,1.0,0.0};
 
 double genrand()
 {
@@ -42,7 +48,6 @@ void setup_the_viewvol()
 	struct point view;
 	struct point up;
 
-	// specify position for view volume
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -81,8 +86,6 @@ void jitter_view()
 	view.x = JITTER*genrand() - 0.5; view.y = JITTER*genrand() + 1.0; view.z = JITTER*genrand();
 	up.x = 0.0; up.y = 1.0; up.z = 0.0;
 	vdir.x = view.x - eye.x; vdir.y = view.y - eye.y; vdir.z = view.z - eye.z;
-	// Calculate correct up vector as orthogonal to vdir and in the plane of
-	// vdir and (0,1,0).
 	vtemp = cross(vdir,up);
 	utemp = cross(vtemp,vdir);
 	up = unit_length(utemp);
@@ -95,46 +98,16 @@ void draw_stuff()
 {
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glDrawArrays(GL_TRIANGLES,0,final_vertices.size());
-	//glutSwapBuffers();
 	glFlush();
 }
 
-void do_lights()
-{
-	/* white light */
-	float light0_ambient[] = { 0.0, 0.0, 0.0, 0.0 };
-	float light0_diffuse[] = { 1.0, 1.0, 1.0, 0.0 };
-	float light0_specular[] = { 1.0, 1.0, 1.0, 0.0 };
-	float light0_position[] = { 1.5, 2.0, 2.0, 1.0 };
-	float light0_direction[] = { -1.5, -2.0, -2.0, 1.0};
-
-	/* turn off scene default ambient */
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT,light0_ambient);
-
-	/* make specular correct for spots */
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,1);
-
-	glLightfv(GL_LIGHT0,GL_AMBIENT,light0_ambient);
-	glLightfv(GL_LIGHT0,GL_DIFFUSE,light0_diffuse);
-	glLightfv(GL_LIGHT0,GL_SPECULAR,light0_specular);
-	glLightf(GL_LIGHT0,GL_SPOT_EXPONENT,1.0);
-	glLightf(GL_LIGHT0,GL_SPOT_CUTOFF,180.0);
-	glLightf(GL_LIGHT0,GL_CONSTANT_ATTENUATION,0.5);
-	glLightf(GL_LIGHT0,GL_LINEAR_ATTENUATION,0.1);
-	glLightf(GL_LIGHT0,GL_QUADRATIC_ATTENUATION,0.01);
-	glLightfv(GL_LIGHT0,GL_POSITION,light0_position);
-	glLightfv(GL_LIGHT0,GL_SPOT_DIRECTION,light0_direction);
-
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-}
 
 void do_material()
 {
 	float mat_ambient[] = {0.0,0.0,0.0,1.0};
-	float mat_diffuse[] = {0.9,0.9,0.1,1.0};
-	float mat_specular[] = {1.0,1.0,1.0,1.0};
-	float mat_shininess[] = {2.0};
+	float mat_diffuse[] = {0.29,0.21,0.11,1.0};
+	float mat_specular[] = {0.3,0.3,0.3,1.0};
+	float mat_shininess[] = {30.0};
 
 	glMaterialfv(GL_FRONT,GL_AMBIENT,mat_ambient);
 	glMaterialfv(GL_FRONT,GL_DIFFUSE,mat_diffuse);
@@ -150,22 +123,48 @@ void initOGL(int argc, char **argv)
 	glutInitDisplayMode(GLUT_RGBA|GLUT_DEPTH|GLUT_ACCUM);
 	glutInitWindowSize(512,512);
 	glutInitWindowPosition(100,50);
-	glutCreateWindow("my_cool_cube");
+	glutCreateWindow("my_cool_bunny");
 	glewInit();
 	glBindBuffer(GL_ARRAY_BUFFER,mybuf);
 	glBufferData(GL_ARRAY_BUFFER, out_data_size * sizeof(GLfloat), out_data, GL_STATIC_DRAW);
-	// When using VBOs, the final arg is a byte offset in buffer, not the address,
-	// but gl<whatever>Pointer still expects an address type, hence the NULL.
 	glVertexPointer(3,GL_FLOAT,3*sizeof(GLfloat),BUFFER_OFFSET(0));
 	glNormalPointer(GL_FLOAT,3*sizeof(GLfloat),BUFFER_OFFSET(out_data_size/2 * sizeof(GLfloat)));
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_NORMAL_ARRAY);
-	/* gray background */
-	glClearColor(0.35,0.35,0.35,0.0);
+	glClearColor(0.54,0.90,1.0,0.0);
 	glClearAccum(0.0,0.0,0.0,0.0);
 }
 
-void go()
+void motion_blur()
+{
+	int view_pass;
+	glClear(GL_ACCUM_BUFFER_BIT);
+
+	for(view_pass=0;view_pass<VPASSES;view_pass++){
+		jitter_view();
+		draw_stuff();
+		glFlush();
+		glAccum(GL_ACCUM,1.0/(float)(VPASSES));
+	}
+	glAccum(GL_RETURN,1.0); 
+
+	glTranslatef(0.0, 1.0, 0.0);
+	draw_stuff();
+	glFlush();
+	glAccum(GL_ACCUM, ADDEACH);
+	for(view_pass = 0; view_pass < VPASSES; view_pass++){
+		glAccum(GL_MULT, FADE);
+		glTranslatef(0.0, -1.0 / VPASSES, 0.0);
+		draw_stuff();
+		glFlush();
+		glAccum(GL_ACCUM, ADDEACH);
+	}
+	glAccum(GL_RETURN, 1.0);
+	glFlush();
+}
+
+
+void anti_alias()
 {
 	int view_pass;
 	glClear(GL_ACCUM_BUFFER_BIT);
@@ -177,13 +176,6 @@ void go()
 	}
 	glAccum(GL_RETURN,1.0);
 }
-
-
-/*******phong shading shit ********/
-float eye[] = {-3.0,3.0,6.0};
-float viewpt[] = {-0.5,1.0,0.0};
-float up[] = {0.0,1.0,0.0};
-float light0_position[] = {3.0,3.0,3.0,1.0};
 
 char *read_shader_program(char *filename)
 {
@@ -203,7 +195,40 @@ char *read_shader_program(char *filename)
 
 void set_light()
 {
-	glLightfv(GL_LIGHT0,GL_POSITION,light0_position);
+	float key_light_position[] = {-1.0,7.0,6.0,1.0};	
+	float back_light_position[] = {0.5,5.0,-4.0,1.0};	
+	float fill_light_position[] = {-5.0,-1.0,1.0,1.0}; 
+
+	float default_ambient[] = { 0.0, 0.0, 0.0, 0.0 };
+	float default_diffuse[] = { 1.0, 1.0, 1.0, 0.0 };
+	float default_specular[] = { 1.0, 1.0, 1.0, 0.0 };
+
+	float dim_light_diffuse[] = { 0.3, 0.3, 0.3, 0.0 };
+
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT,default_ambient);
+
+	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,1);
+
+	glLightfv(GL_LIGHT0,GL_AMBIENT,default_ambient);
+	glLightfv(GL_LIGHT0,GL_DIFFUSE,default_diffuse);
+	glLightfv(GL_LIGHT0,GL_SPECULAR,default_specular);
+
+	glLightfv(GL_LIGHT1,GL_AMBIENT,default_ambient);
+	glLightfv(GL_LIGHT1,GL_DIFFUSE,dim_light_diffuse);
+	glLightfv(GL_LIGHT1,GL_SPECULAR,default_specular);
+
+	glLightfv(GL_LIGHT2,GL_AMBIENT,default_ambient);
+	glLightfv(GL_LIGHT2,GL_DIFFUSE,dim_light_diffuse);
+	glLightfv(GL_LIGHT2,GL_SPECULAR,default_specular);
+	
+	glLightfv(GL_LIGHT0,GL_POSITION,key_light_position);
+	glLightfv(GL_LIGHT1,GL_POSITION,back_light_position);
+	glLightfv(GL_LIGHT2,GL_POSITION,fill_light_position);
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHT1);
+	glEnable(GL_LIGHT2);
 }
 
 void view_volume()
@@ -240,12 +265,18 @@ unsigned int set_shaders()
 	return(p);
 }
 
-void getout(unsigned char key, int x, int y)
+void handleKeys(unsigned char key, int x, int y)
 {
 	switch(key) {
 		case 'q':               
 			glDeleteBuffers(1,&mybuf);
 			exit(1);
+		case 'b':
+			motion_blur();
+			break;
+		case 'a':
+			anti_alias();
+			break;
 		default:
 			break;
 	}
@@ -256,16 +287,13 @@ int main(int argc, char **argv)
 	read_obj();
 	initOGL(argc,argv);
 	glEnable(GL_DEPTH_TEST);
-	//viewvolume_shape();
 	view_volume();
-	//setup_the_viewvol();
 	jitter_view();
 	set_light();
 	do_material();
 	set_shaders();
-	//glutDisplayFunc(draw_stuff);
-	glutDisplayFunc(go);
-	glutKeyboardFunc(getout);
+	glutDisplayFunc(anti_alias);
+	glutKeyboardFunc(handleKeys);
 	glutMainLoop();
 	return 0;
 }
